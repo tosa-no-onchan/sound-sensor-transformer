@@ -23,3 +23,5 @@ sound_sensor_transformer_train.ipynb
 #### 4. ONNX でのテスト  
   $ sound_sensor_orangepi_onnx.py  
   
+#### 5. 参照  
+[機械の音で、故障の診断 Sound Sensor Transformer.](https://www.netosa.com/blog/2026/04/-sound-sensor-transformer.html)  
