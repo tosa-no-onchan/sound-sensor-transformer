@@ -268,7 +268,8 @@ if __name__ == '__main__':
         latencies = []
         for sub_dir in CLASS_NAMES:
             data_dir = os.path.join("datasets/bike", sub_dir)
-            flist=os.listdir(data_dir)
+            #flist=os.listdir(data_dir)
+            flist = [f for f in os.listdir(data_dir) if f.endswith(".mp4") or f.endswith(".wav")]
             p_num = min(len(flist),100)
             print('-----')
             cnt=0

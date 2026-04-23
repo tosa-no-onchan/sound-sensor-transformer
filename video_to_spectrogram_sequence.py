@@ -2,20 +2,24 @@ import numpy as np
 import cv2
 import librosa
 #from moviepy.editor import VideoFileClip
-from moviepy import VideoFileClip
+from moviepy import VideoFileClip,AudioFileClip
+import os
 
 def video_to_spectrogram_sequence(video_path, n_seconds=4, L_frames=8, hop_length=49):
     sr = 22050
     target_len = n_seconds * sr
-    # 1. 音声の読み込み (MoviePyを使用)
+    # 1. 音声の読み込み (拡張子で自動切り替え)
     try:
-        with VideoFileClip(video_path) as video:
-            #print(f"Sample rate: {video.audio.fps} Hz")
-            # 指定秒数分を切り出し
-            duration = min(video.duration, n_seconds)
-            #audio_clip = video.audio.subclip(0, duration)
-            # 修正後 (v2.0以降)
-            audio_clip = video.audio.subclipped(0, duration)
+        ext = os.path.splitext(video_path)[1].lower()
+        # 拡張子が wav なら AudioFileClip、それ以外（mp4等）なら VideoFileClip
+        if ext == ".wav":
+            clip = AudioFileClip(video_path)
+        else:
+            clip = VideoFileClip(video_path)
+        with clip:
+            duration = min(clip.duration, n_seconds)
+            # MoviePy v2.0以降の書き方
+            audio_clip = clip.audio.subclipped(0, duration) if hasattr(clip, 'audio') and clip.audio else clip.subclipped(0, duration)
             # 指定サンプリングレートでNumPy配列化
             y = audio_clip.to_soundarray(fps=sr)
             # ステレオ(2ch)なら平均をとってモノラル(1ch)に
@@ -26,14 +30,14 @@ def video_to_spectrogram_sequence(video_path, n_seconds=4, L_frames=8, hop_lengt
                 y = np.pad(y, (0, target_len - len(y)))
             else:
                 y = y[:target_len]
-            audio_clip.close()
+            clip.close()
     except Exception as e:
         print(f"Audio extraction error: {e}")
         y = np.zeros(target_len)
 
     # add by nishi 2026.4.17
     # 音声を -1.0 〜 1.0 の範囲に正規化する
-    if False:
+    if True:
         if np.max(np.abs(y)) > 0:
             y = y / np.max(np.abs(y))
 
