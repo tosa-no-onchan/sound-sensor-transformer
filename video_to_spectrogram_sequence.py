@@ -5,9 +5,12 @@ import librosa
 from moviepy import VideoFileClip,AudioFileClip
 import os
 
-def video_to_spectrogram_sequence(video_path, n_seconds=4, L_frames=8, hop_length=49):
-    sr = 22050
+def video_to_spectrogram_sequence(video_path, n_seconds=4, L_frames=8, hop_length=49,sr=22050,n_mels=224):
+    #sr = 22050
     target_len = n_seconds * sr
+    #n_mels=224
+    #n_fft=2048
+    n_fft=4096
     # 1. 音声の読み込み (拡張子で自動切り替え)
     try:
         ext = os.path.splitext(video_path)[1].lower()
@@ -42,32 +45,45 @@ def video_to_spectrogram_sequence(video_path, n_seconds=4, L_frames=8, hop_lengt
             y = y / np.max(np.abs(y))
 
     # 2. メルスペクトログラムの計算
-    # 黒パディングを消すために hop_length=49 を使用
-    #hop_length = 49
-    S = librosa.feature.melspectrogram(y=y.astype(np.float32), sr=sr, n_mels=224, hop_length=hop_length)
+    # n_fftを追加して分析精度を上げる
+    S = librosa.feature.melspectrogram(
+        y=y.astype(np.float32), 
+        sr=sr, 
+        n_mels=n_mels, 
+        n_fft=n_fft,      # 追加：周波数の解像度
+        hop_length=hop_length
+    )
 
     S_dB = librosa.power_to_db(S, ref=np.max)
     # 3. データの正規化 (-80dB〜0dB を 0〜255に)
     S_norm = ((S_dB + 80) / 80 * 255).clip(0, 255).astype(np.uint8)
+
+    #print('S_norm.shape:',S_norm.shape)   # S_norm.shape: (320, 3892)  -> 3892/ 320= 12.1625
 
     # 16枚で224幅を切り出すための計算 (1792 / 16 = 112)
     #if L_frames==8:
     #    step = 224
     #if L_frames==16:
     #    step = 112
-    step=int(1792/ L_frames)
+    #step=int(1792/ L_frames)
+
+    # 4. 画像の切り出し（L_framesに合わせてstepを自動計算）
+    # 幅1800前後(sr22050時)から3600前後(sr44100時)になるので
+    # 切り出し枚数（L_frames）を調整すれば、224x224の質が上がります
+    total_width = S_norm.shape[1]
+    step = int(total_width / L_frames) 
 
     # 4. 時間軸方向にL_frames個の画像に分割
     # hop_length=49 なら total_width はほぼ 1792 (224*8) になります
     spectrogram_frames = []
     for i in range(L_frames):
         start = i * step
-        end = start + 224
+        end = start + n_mels
         frame = S_norm[:, start:end]
 
         # 端っこで幅が足りない場合はパディング
-        if frame.shape[1] < 224:
-            frame = np.pad(frame, ((0,0), (0, 224 - frame.shape[1])), mode='constant')
+        if frame.shape[1] < n_mels:
+            frame = np.pad(frame, ((0,0), (0, n_mels - frame.shape[1])), mode='constant')
 
         # 1. RGB化 [H, W, C]
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
