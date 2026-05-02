@@ -32,6 +32,10 @@ sound_sensor_transformer_train.ipynb
 
 #### 7. update  
   2026.5.2  
+  model の outputs の変更をしました。  
+  1) 1 channel -&gt; 3 channels に、拡張する。
+  2) sigmoid() を通さない、または、orch.nn.functional.softplus() を通す。
+     
   decoder の修正。  
   sigmoid は、使わない。 nn.Linear() を、3channels 対応にする。  
 ````
