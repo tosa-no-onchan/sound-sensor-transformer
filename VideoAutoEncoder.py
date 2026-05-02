@@ -5,10 +5,9 @@ from torchvision import models
 from torchvision import transforms
 import torchvision.transforms.functional as F
 
-USE_SIGMOID=True
 
 class VideoAutoEncoder(nn.Module):
-    def __init__(self, num_frames=8, n_mels=224, use_full_scratch=False,channels=3): # 16に変更  --> num_frames は、使っていない!!
+    def __init__(self, num_frames=8, n_mels=224, use_full_scratch=False,channels=3,use_sigmoid=True): # 16に変更  --> num_frames は、使っていない!!
         super(VideoAutoEncoder, self).__init__()
         # エンコーダ（ResNet + Transformer）
         resnet = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
@@ -22,6 +21,7 @@ class VideoAutoEncoder(nn.Module):
         self.n_mels=n_mels
         self.d_model=512
         self.channels=channels      # gray:1 / color:3
+        self.use_sigmoid=use_sigmoid
 
         # Transformerの定義
         #encoder_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, batch_first=True)
@@ -47,7 +47,7 @@ class VideoAutoEncoder(nn.Module):
         # Transformerで時系列の特徴を統合
         z = self.transformer(features) # [b, t, 512]
 
-        if not USE_SIGMOID:
+        if not self.use_sigmoid:
             # 各フレームを復元 [b, t, n_mels*n_mels]
             reconstructed = self.decoder(z)
         else:
