@@ -29,3 +29,35 @@ sound_sensor_transformer_train.ipynb
   
 #### 6. 参照  
 [機械の音で、故障の診断 Sound Sensor Transformer.](https://www.netosa.com/blog/2026/04/-sound-sensor-transformer.html)  
+
+#### 7. update  
+  2026.5.2  
+  decoder の修正。  
+  sigmoid は、使わない。 nn.Linear() を、3channels 対応にする。  
+````
+        self.decoder = nn.Sequential(
+            nn.Linear(self.d_model, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, self.channels * self.n_mels * self.n_mels),
+            #nn.Sigmoid() # 0-1の範囲に出力
+        )
+
+````
+
+  forward の修正。  
+  sigmoid を、使わないか、torch.nn.functional.softplus() を使う。  
+````
+    def forward(self, x):
+        ....        
+        if not self.use_sigmoid:
+            reconstructed = self.decoder(z)
+        else:
+            reconstructed_raw = self.decoder(z)
+            # 注) sgimoid を、入れると、loss=0.199 で、止まる。
+            # バイクのシャリシャリを拾うなら、sigmoid は、使わない。 by nishi 2026.5.1
+            #reconstructed = torch.sigmoid(reconstructed_raw)
+            # 0〜1に押し込めるのではなく、単にマイナスを消して「やりすぎ」を許容する
+            reconstructed = torch.nn.functional.softplus(reconstructed_raw) 
+        return reconstructed.view(b, t, self.channels, self.n_mels, self.n_mels) # color or モノクロ画像として復元
+
+````
